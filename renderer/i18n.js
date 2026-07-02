@@ -1,0 +1,43 @@
+'use strict';
+
+// TR/EN metinleri — Shortcut Deck'teki desenle ayni: data-i18n / data-i18n-title.
+const I18N = {
+  tr: {
+    appTitle: 'Smart Gadget',
+    pin: 'Her zaman üstte',
+    mini: 'Mini mod',
+    scan: 'Ağı tara',
+    scanning: 'Taranıyor…',
+    noDevice: 'Ağda lamba bulunamadı.',
+    lanHint: 'Yeelight uygulamasından "LAN Kontrolü"nün açık olduğundan emin olun.',
+    addIp: 'IP ile ekle',
+    invalidIp: 'Geçersiz IP adresi',
+    turnOn: 'Aç',
+    turnOff: 'Kapat',
+    brightness: 'Parlaklık',
+    colorTemp: 'Beyaz tonu',
+    color: 'Renk',
+    connected: 'Bağlı',
+    disconnected: 'Bağlantı yok',
+    foundDevices: (n) => `${n} cihaz bulundu`
+  },
+  en: {
+    appTitle: 'Smart Gadget',
+    pin: 'Always on top',
+    mini: 'Mini mode',
+    scan: 'Scan network',
+    scanning: 'Scanning…',
+    noDevice: 'No lamp found on the network.',
+    lanHint: 'Make sure "LAN Control" is enabled in the Yeelight app.',
+    addIp: 'Add by IP',
+    invalidIp: 'Invalid IP address',
+    turnOn: 'Turn on',
+    turnOff: 'Turn off',
+    brightness: 'Brightness',
+    colorTemp: 'White tone',
+    color: 'Color',
+    connected: 'Connected',
+    disconnected: 'Disconnected',
+    foundDevices: (n) => `${n} device(s) found`
+  }
+};
