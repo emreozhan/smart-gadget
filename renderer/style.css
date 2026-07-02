@@ -87,6 +87,28 @@ button.primary:hover { filter: brightness(1.1); }
   cursor: pointer;
 }
 
+/* --- Cihaz sekmeleri --- */
+.device-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel);
+  border: 1px solid var(--panel2);
+  color: var(--muted);
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 12.5px;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--text); border-color: var(--accent); }
+.tab-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--panel2); flex: 0 0 auto; }
+.tab-dot.on { background: var(--ok); }
+
+.icon-btn.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* --- Cihaz karti --- */
 .device-header {
   display: flex;

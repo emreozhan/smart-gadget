@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('gadget', {
   discover: () => ipcRenderer.invoke('devices:discover'),
   addManual: (ip) => ipcRenderer.invoke('devices:addManual', ip),
   removeDevice: (id) => ipcRenderer.invoke('devices:remove', id),
+  selectDevice: (id) => ipcRenderer.invoke('ui:selectDevice', id),
   setPower: (id, on) => ipcRenderer.invoke('device:power', id, on),
   setBright: (id, value) => ipcRenderer.send('device:bright', id, value),
   setRgb: (id, rgb) => ipcRenderer.send('device:rgb', id, rgb),

@@ -84,12 +84,12 @@ function trayIcon(on) {
   );
 }
 
-function firstDevice() {
-  return devices.values().next().value || null;
+function selectedDevice() {
+  return devices.get(store.get('selectedId')) || devices.values().next().value || null;
 }
 
 function createTray() {
-  const dev = firstDevice();
+  const dev = selectedDevice();
   tray = new Tray(trayIcon(dev ? dev.props.power === 'on' : false));
   tray.setToolTip('Smart Gadget');
   tray.on('click', () => {
@@ -101,7 +101,7 @@ function createTray() {
 
 function updateTrayMenu() {
   const t = STRINGS[store.get('lang')] || STRINGS.tr;
-  const dev = firstDevice();
+  const dev = selectedDevice();
   const isOn = dev && dev.props.power === 'on';
   tray.setImage(trayIcon(!!isOn));
   tray.setContextMenu(Menu.buildFromTemplate([
@@ -210,8 +210,14 @@ ipcMain.handle('app:getInitial', () => ({
   mini: store.get('mini'),
   alwaysOnTop: store.get('alwaysOnTop'),
   lang: store.get('lang'),
+  selectedId: store.get('selectedId'),
   devices: [...devices.values()].map((d) => d.toJSON())
 }));
+
+ipcMain.handle('ui:selectDevice', (_e, id) => {
+  store.set('selectedId', id);
+  updateTrayMenu();
+});
 
 ipcMain.handle('devices:discover', () => runDiscovery());
 

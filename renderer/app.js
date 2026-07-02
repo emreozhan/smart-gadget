@@ -6,7 +6,8 @@ const state = {
   lang: 'tr',
   mini: false,
   alwaysOnTop: false,
-  device: null // secili (ilk) cihazin JSON hali
+  devices: [],      // ana surecten gelen cihaz JSON'lari
+  selectedId: null
 };
 
 const SWATCH_COLORS = ['#ffcc4d', '#ff8a5c', '#ff5c7a', '#b06cff', '#5c8aff', '#4dd0e1', '#6adf8f', '#ffffff'];
@@ -16,17 +17,50 @@ function t(key) {
   return typeof entry === 'function' ? entry : (entry || key);
 }
 
+function selectedDevice() {
+  return state.devices.find((d) => d.id === state.selectedId) || state.devices[0] || null;
+}
+
 function applyLang() {
   document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-title]').forEach((el) => { el.title = t(el.dataset.i18nTitle); });
   $('langBtn').textContent = state.lang === 'tr' ? '🇹🇷' : '🇬🇧';
-  renderDevice();
+  renderAll();
 }
 
 function applyUi() {
   document.body.classList.toggle('mini', state.mini);
   $('pinBtn').classList.toggle('active', state.alwaysOnTop);
   $('miniBtn').classList.toggle('active', state.mini);
+}
+
+// --- Cihaz sekmeleri ---
+
+function deviceLabel(dev) {
+  return dev.name || (dev.props && dev.props.name) || dev.model || dev.ip;
+}
+
+function renderTabs() {
+  const wrap = $('deviceTabs');
+  wrap.innerHTML = '';
+  // Tek cihaz varken sekme cubugu gereksiz.
+  wrap.classList.toggle('hidden', state.devices.length < 2);
+  const sel = selectedDevice();
+  for (const dev of state.devices) {
+    const b = document.createElement('button');
+    b.className = 'tab' + (sel && dev.id === sel.id ? ' active' : '');
+    const dot = document.createElement('span');
+    dot.className = 'tab-dot' + (dev.props && dev.props.power === 'on' ? ' on' : '');
+    b.appendChild(dot);
+    b.appendChild(document.createTextNode(deviceLabel(dev)));
+    b.title = dev.ip;
+    b.addEventListener('click', () => {
+      state.selectedId = dev.id;
+      window.gadget.selectDevice(dev.id);
+      renderAll();
+    });
+    wrap.appendChild(b);
+  }
 }
 
 // --- Cihaz gorunumu ---
@@ -36,7 +70,7 @@ function rgbToHex(rgb) {
 }
 
 function renderDevice() {
-  const dev = state.device;
+  const dev = selectedDevice();
   $('emptyState').classList.toggle('hidden', !!dev);
   $('deviceView').classList.toggle('hidden', !dev);
   if (!dev) return;
@@ -53,7 +87,7 @@ function renderDevice() {
   $('ctRow').classList.toggle('hidden', !hasCt);
   $('deviceView').classList.toggle('no-color', !hasColor);
 
-  $('deviceName').textContent = dev.name || p.name || dev.model || 'Yeelight';
+  $('deviceName').textContent = deviceLabel(dev);
   $('deviceInfo').textContent = `${dev.model || ''} · ${dev.ip} · ${dev.connected ? t('connected') : t('disconnected')}`;
   $('connDot').classList.toggle('on', dev.connected);
 
@@ -73,26 +107,34 @@ function renderDevice() {
   }
 }
 
+function renderAll() {
+  renderTabs();
+  renderDevice();
+}
+
 // --- Olaylar ---
 
 $('powerBtn').addEventListener('click', () => {
-  if (!state.device) return;
-  const isOn = state.device.props.power === 'on';
-  window.gadget.setPower(state.device.id, !isOn).catch(() => {});
+  const dev = selectedDevice();
+  if (!dev) return;
+  window.gadget.setPower(dev.id, dev.props.power !== 'on').catch(() => {});
 });
 
 $('brightSlider').addEventListener('input', (e) => {
-  if (!state.device) return;
+  const dev = selectedDevice();
+  if (!dev) return;
   $('brightVal').textContent = e.target.value + '%';
-  window.gadget.setBright(state.device.id, Number(e.target.value));
+  window.gadget.setBright(dev.id, Number(e.target.value));
 });
 
 $('ctSlider').addEventListener('input', (e) => {
-  if (state.device) window.gadget.setCt(state.device.id, Number(e.target.value));
+  const dev = selectedDevice();
+  if (dev) window.gadget.setCt(dev.id, Number(e.target.value));
 });
 
 $('colorPicker').addEventListener('input', (e) => {
-  if (state.device) window.gadget.setRgb(state.device.id, parseInt(e.target.value.slice(1), 16));
+  const dev = selectedDevice();
+  if (dev) window.gadget.setRgb(dev.id, parseInt(e.target.value.slice(1), 16));
 });
 
 function buildSwatches() {
@@ -102,22 +144,25 @@ function buildSwatches() {
     b.className = 'swatch';
     b.style.background = hex;
     b.addEventListener('click', () => {
-      if (!state.device) return;
+      const dev = selectedDevice();
+      if (!dev) return;
       $('colorPicker').value = hex;
-      window.gadget.setRgb(state.device.id, parseInt(hex.slice(1), 16));
+      window.gadget.setRgb(dev.id, parseInt(hex.slice(1), 16));
     });
     wrap.appendChild(b);
   }
 }
 
 async function scan(statusEl) {
+  $('rescanBtn').classList.add('spin');
   statusEl.textContent = t('scanning');
   try {
     const list = await window.gadget.discover();
     statusEl.textContent = t('foundDevices')(list.length);
-    if (list.length) { state.device = list[0]; renderDevice(); }
   } catch (err) {
     statusEl.textContent = String(err.message || err);
+  } finally {
+    $('rescanBtn').classList.remove('spin');
   }
 }
 
@@ -127,8 +172,9 @@ $('rescanBtn').addEventListener('click', () => scan({ set textContent(_) {} }));
 $('addIpBtn').addEventListener('click', async () => {
   const ip = $('manualIp').value.trim();
   try {
-    state.device = await window.gadget.addManual(ip);
-    renderDevice();
+    const dev = await window.gadget.addManual(ip);
+    state.selectedId = dev.id;
+    renderAll();
   } catch (_) {
     $('scanStatus').textContent = t('invalidIp');
   }
@@ -146,20 +192,16 @@ $('miniBtn').addEventListener('click', () => window.gadget.setMini(!state.mini))
 // --- Ana surecten gelen guncellemeler ---
 
 window.gadget.onDeviceState((dev) => {
-  if (!state.device || state.device.id === dev.id) {
-    state.device = dev;
-    renderDevice();
-  }
+  const i = state.devices.findIndex((d) => d.id === dev.id);
+  if (i >= 0) state.devices[i] = dev;
+  else state.devices.push(dev);
+  renderAll();
 });
 
 window.gadget.onDeviceList((list) => {
-  if (list.length) {
-    const current = state.device && list.find((d) => d.id === state.device.id);
-    state.device = current || list[0];
-  } else {
-    state.device = null;
-  }
-  renderDevice();
+  state.devices = list;
+  if (!list.find((d) => d.id === state.selectedId)) state.selectedId = null;
+  renderAll();
 });
 
 window.gadget.onUiState((ui) => {
@@ -176,7 +218,8 @@ window.gadget.onUiState((ui) => {
   state.lang = init.lang;
   state.mini = init.mini;
   state.alwaysOnTop = init.alwaysOnTop;
-  state.device = init.devices[0] || null;
+  state.devices = init.devices;
+  state.selectedId = init.selectedId;
   applyUi();
   applyLang();
 })();

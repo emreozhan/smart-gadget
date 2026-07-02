@@ -6,7 +6,8 @@ const fs = require('fs');
 const path = require('path');
 
 const DEFAULTS = {
-  devices: [],            // { id, ip, port, name, model }
+  devices: [],            // { id, ip, port, name, model, support }
+  selectedId: null,       // arayuzde ve tepside secili cihaz
   windowBounds: null,     // { x, y, width, height } — normal mod
   miniBounds: null,       // { x, y } — mini mod konumu
   mini: false,
