@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('gadget', {
   setRgb: (id, rgb) => ipcRenderer.send('device:rgb', id, rgb),
   setCt: (id, kelvin) => ipcRenderer.send('device:ct', id, kelvin),
   setMini: (mini) => ipcRenderer.invoke('ui:setMini', mini),
+  setHover: (hover) => ipcRenderer.send('ui:hover', hover),
   setPin: (pin) => ipcRenderer.invoke('ui:setPin', pin),
   setLang: (lang) => ipcRenderer.invoke('ui:setLang', lang),
   onDeviceState: (cb) => ipcRenderer.on('device:state', (_e, dev) => cb(dev)),

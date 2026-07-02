@@ -32,12 +32,30 @@ function applyUi() {
   document.body.classList.toggle('mini', state.mini);
   $('pinBtn').classList.toggle('active', state.alwaysOnTop);
   $('miniBtn').classList.toggle('active', state.mini);
+  // Mini modda ust bar gizlendigi icin islevsel butonlar (pin + mini)
+  // kompakt satirin sonuna tasinir; normal modda ust bara geri doner.
+  const target = state.mini ? $('miniCtrls') : $('topbarBtns');
+  target.appendChild($('pinBtn'));
+  target.appendChild($('miniBtn'));
 }
 
 // --- Cihaz sekmeleri ---
 
 function deviceLabel(dev) {
   return dev.name || (dev.props && dev.props.name) || dev.model || dev.ip;
+}
+
+function renderMiniSelect() {
+  const sel = $('miniDeviceSelect');
+  const current = selectedDevice();
+  sel.innerHTML = '';
+  for (const dev of state.devices) {
+    const opt = document.createElement('option');
+    opt.value = dev.id;
+    opt.textContent = (dev.props && dev.props.power === 'on' ? '● ' : '○ ') + deviceLabel(dev);
+    sel.appendChild(opt);
+  }
+  if (current) sel.value = current.id;
 }
 
 function renderTabs() {
@@ -109,6 +127,7 @@ function renderDevice() {
 
 function renderAll() {
   renderTabs();
+  renderMiniSelect();
   renderDevice();
 }
 
@@ -188,6 +207,16 @@ $('langBtn').addEventListener('click', () => {
 
 $('pinBtn').addEventListener('click', () => window.gadget.setPin(!state.alwaysOnTop));
 $('miniBtn').addEventListener('click', () => window.gadget.setMini(!state.mini));
+
+$('miniDeviceSelect').addEventListener('change', (e) => {
+  state.selectedId = e.target.value;
+  window.gadget.selectDevice(state.selectedId);
+  renderAll();
+});
+
+// Mini mod yari saydam; imlec uzerindeyken netlessin.
+document.addEventListener('mouseenter', () => window.gadget.setHover(true));
+document.addEventListener('mouseleave', () => window.gadget.setHover(false));
 
 // --- Ana surecten gelen guncellemeler ---
 

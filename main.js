@@ -6,7 +6,8 @@ const { discover, sweepDiscover, queryOne, YeelightDevice } = require('./src/yee
 const { Store } = require('./src/store');
 
 const NORMAL_SIZE = { width: 390, height: 600 };
-const MINI_SIZE = { width: 380, height: 160 };
+const MINI_SIZE = { width: 460, height: 106 };
+const MINI_OPACITY = 0.8;
 
 const STRINGS = {
   tr: { show: 'Göster', hide: 'Gizle', on: 'Lambayı Aç', off: 'Lambayı Kapat', mini: 'Mini mod', pin: 'Her zaman üstte', quit: 'Çıkış' },
@@ -44,7 +45,7 @@ function createWindow() {
     height: size.height,
     x: bounds ? bounds.x : undefined,
     y: bounds ? bounds.y : undefined,
-    minWidth: MINI_SIZE.width,
+    minWidth: 340,
     minHeight: MINI_SIZE.height,
     resizable: !mini,
     maximizable: false,
@@ -57,6 +58,7 @@ function createWindow() {
     }
   });
   if (store.get('alwaysOnTop')) win.setAlwaysOnTop(true, 'floating');
+  if (mini) win.setOpacity(MINI_OPACITY);
   win.setMenuBarVisibility(false);
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
@@ -99,21 +101,29 @@ function createTray() {
   updateTrayMenu();
 }
 
+function deviceLabel(dev) {
+  return dev.name || dev.props.name || dev.model || dev.ip;
+}
+
 function updateTrayMenu() {
   const t = STRINGS[store.get('lang')] || STRINGS.tr;
   const dev = selectedDevice();
-  const isOn = dev && dev.props.power === 'on';
-  tray.setImage(trayIcon(!!isOn));
+  tray.setImage(trayIcon(!!(dev && dev.props.power === 'on')));
+  // Her cihaz icin ayri ac/kapat anahtari.
+  const deviceItems = [...devices.values()].map((d) => ({
+    label: deviceLabel(d),
+    type: 'checkbox',
+    checked: d.props.power === 'on',
+    enabled: d.connected,
+    click: () => d.setPower(d.props.power !== 'on').catch(() => {})
+  }));
   tray.setContextMenu(Menu.buildFromTemplate([
     {
       label: win && win.isVisible() ? t.hide : t.show,
       click: () => { if (win.isVisible()) win.hide(); else { win.show(); win.focus(); } }
     },
-    {
-      label: isOn ? t.off : t.on,
-      enabled: !!(dev && dev.connected),
-      click: () => { if (dev) dev.setPower(!isOn).catch(() => {}); }
-    },
+    { type: 'separator' },
+    ...deviceItems,
     { type: 'separator' },
     { label: t.mini, type: 'checkbox', checked: store.get('mini'), click: (item) => setMini(item.checked) },
     { label: t.pin, type: 'checkbox', checked: store.get('alwaysOnTop'), click: (item) => setPin(item.checked) },
@@ -183,6 +193,7 @@ function setMini(mini) {
     ...(bounds ? { x: bounds.x, y: bounds.y } : {})
   });
   win.setResizable(!mini);
+  win.setOpacity(mini ? MINI_OPACITY : 1);
   sendUiState();
   updateTrayMenu();
 }
@@ -266,6 +277,10 @@ ipcMain.on('device:ct', (_e, id, kelvin) => {
 });
 
 ipcMain.handle('ui:setMini', (_e, mini) => setMini(mini));
+// Mini mod yari saydam; imlec penceredeyken gecici olarak netlesir.
+ipcMain.on('ui:hover', (_e, hover) => {
+  if (store.get('mini')) win.setOpacity(hover ? 1 : MINI_OPACITY);
+});
 ipcMain.handle('ui:setPin', (_e, pin) => setPin(pin));
 ipcMain.handle('ui:setLang', (_e, lang) => {
   store.set('lang', lang === 'en' ? 'en' : 'tr');

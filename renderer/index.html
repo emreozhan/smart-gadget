@@ -12,7 +12,7 @@
       <span class="logo">💡</span>
       <span data-i18n="appTitle">Smart Gadget</span>
     </div>
-    <div class="topbar-btns">
+    <div id="topbarBtns" class="topbar-btns">
       <button id="langBtn" class="icon-btn" title=""></button>
       <button id="pinBtn" class="icon-btn" data-i18n-title="pin">📌</button>
       <button id="miniBtn" class="icon-btn" data-i18n-title="mini">▣</button>
@@ -34,6 +34,7 @@
 
     <!-- Cihaz karti -->
     <section id="deviceView" class="hidden">
+      <select id="miniDeviceSelect" class="mini-only" title=""></select>
       <div id="deviceTabs" class="device-tabs mini-hide"></div>
       <div class="device-header">
         <span id="connDot" class="dot"></span>
@@ -66,6 +67,8 @@
           <div class="swatches mini-hide" id="swatches"></div>
         </div>
       </div>
+
+      <span id="miniCtrls" class="mini-only"></span>
     </section>
   </main>
   <script src="i18n.js"></script>

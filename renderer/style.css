@@ -194,10 +194,27 @@ input[type="color"] {
 }
 .swatch:hover { border-color: var(--text); }
 
-/* --- Mini mod: tek kompakt satir (guc + parlaklik + renk) --- */
+/* --- Mini mod: tek kompakt satir (secici + guc + parlaklik + renk) --- */
+.mini-only { display: none; }
+body.mini .mini-only { display: flex; }
+
+body.mini .topbar { display: none; } /* baslik/dil mini modda islevsiz */
 body.mini #content { padding: 10px 12px; overflow: hidden; }
 body.mini .mini-hide { display: none !important; }
 body.mini .device-header { display: none; }
+
+#miniDeviceSelect {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--panel2);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 12.5px;
+  max-width: 120px;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+#miniCtrls { gap: 2px; align-items: center; flex: 0 0 auto; }
 body.mini #deviceView {
   display: flex;
   gap: 12px;
