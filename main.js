@@ -5,8 +5,8 @@ const path = require('path');
 const { discover, sweepDiscover, queryOne, YeelightDevice } = require('./src/yeelight');
 const { Store } = require('./src/store');
 
-const NORMAL_SIZE = { width: 390, height: 600 };
-const MINI_SIZE = { width: 460, height: 106 };
+const NORMAL_SIZE = { width: 390, height: 570 };
+const MINI_SIZE = { width: 460, height: 66 };
 const MINI_OPACITY = 0.8;
 
 const STRINGS = {
@@ -49,6 +49,7 @@ function createWindow() {
     minHeight: MINI_SIZE.height,
     resizable: !mini,
     maximizable: false,
+    frame: false, // basligi uygulama ciziyor; mini modda hic baslik yok
     alwaysOnTop: store.get('alwaysOnTop'),
     icon: path.join(__dirname, 'assets', 'icon.ico'),
     webPreferences: {
@@ -275,6 +276,9 @@ ipcMain.on('device:ct', (_e, id, kelvin) => {
   const dev = devices.get(id);
   if (dev) dev.setCt(kelvin);
 });
+
+ipcMain.on('ui:minimize', () => win.minimize());
+ipcMain.on('ui:hideWindow', () => { win.hide(); updateTrayMenu(); });
 
 ipcMain.handle('ui:setMini', (_e, mini) => setMini(mini));
 // Mini mod yari saydam; imlec penceredeyken gecici olarak netlesir.

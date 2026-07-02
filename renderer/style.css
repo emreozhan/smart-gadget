@@ -35,7 +35,13 @@ body {
   padding: 10px 12px;
   background: var(--panel);
   flex: 0 0 auto;
+  -webkit-app-region: drag; /* cercevesiz pencerenin basligi */
 }
+.topbar button { -webkit-app-region: no-drag; }
+
+/* Mini modda baslik yok; govde bosluklarindan suruklenir. */
+body.mini #content { -webkit-app-region: drag; }
+body.mini button, body.mini input, body.mini select { -webkit-app-region: no-drag; }
 .title { font-weight: 600; display: flex; align-items: center; gap: 8px; }
 .topbar-btns { display: flex; gap: 4px; }
 

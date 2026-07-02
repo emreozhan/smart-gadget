@@ -32,11 +32,13 @@ function applyUi() {
   document.body.classList.toggle('mini', state.mini);
   $('pinBtn').classList.toggle('active', state.alwaysOnTop);
   $('miniBtn').classList.toggle('active', state.mini);
-  // Mini modda ust bar gizlendigi icin islevsel butonlar (pin + mini)
+  // Mini modda ust bar gizlendigi icin islevsel butonlar (pin, mini, gizle)
   // kompakt satirin sonuna tasinir; normal modda ust bara geri doner.
-  const target = state.mini ? $('miniCtrls') : $('topbarBtns');
-  target.appendChild($('pinBtn'));
-  target.appendChild($('miniBtn'));
+  if (state.mini) {
+    $('miniCtrls').append($('pinBtn'), $('miniBtn'), $('closeBtn'));
+  } else {
+    $('topbarBtns').append($('pinBtn'), $('miniBtn'), $('minBtn'), $('closeBtn'));
+  }
 }
 
 // --- Cihaz sekmeleri ---
@@ -207,6 +209,8 @@ $('langBtn').addEventListener('click', () => {
 
 $('pinBtn').addEventListener('click', () => window.gadget.setPin(!state.alwaysOnTop));
 $('miniBtn').addEventListener('click', () => window.gadget.setMini(!state.mini));
+$('minBtn').addEventListener('click', () => window.gadget.minimize());
+$('closeBtn').addEventListener('click', () => window.gadget.hideWindow());
 
 $('miniDeviceSelect').addEventListener('change', (e) => {
   state.selectedId = e.target.value;
