@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "smart-gadget",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.js"],
+      "port": 4545,
+      "autoPort": true
+    }
+  ]
+}

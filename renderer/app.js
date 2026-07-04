@@ -17,8 +17,13 @@ function t(key) {
   return typeof entry === 'function' ? entry : (entry || key);
 }
 
+function enabledDevices() {
+  return state.devices.filter((d) => d.enabled !== false);
+}
+
 function selectedDevice() {
-  return state.devices.find((d) => d.id === state.selectedId) || state.devices[0] || null;
+  const list = enabledDevices();
+  return list.find((d) => d.id === state.selectedId) || list[0] || null;
 }
 
 function applyLang() {
@@ -51,7 +56,7 @@ function renderMiniSelect() {
   const sel = $('miniDeviceSelect');
   const current = selectedDevice();
   sel.innerHTML = '';
-  for (const dev of state.devices) {
+  for (const dev of enabledDevices()) {
     const opt = document.createElement('option');
     opt.value = dev.id;
     opt.textContent = (dev.props && dev.props.power === 'on' ? '● ' : '○ ') + deviceLabel(dev);
@@ -63,10 +68,11 @@ function renderMiniSelect() {
 function renderTabs() {
   const wrap = $('deviceTabs');
   wrap.innerHTML = '';
+  const list = enabledDevices();
   // Tek cihaz varken sekme cubugu gereksiz.
-  wrap.classList.toggle('hidden', state.devices.length < 2);
+  wrap.classList.toggle('hidden', list.length < 2);
   const sel = selectedDevice();
-  for (const dev of state.devices) {
+  for (const dev of list) {
     const b = document.createElement('button');
     b.className = 'tab' + (sel && dev.id === sel.id ? ' active' : '');
     const dot = document.createElement('span');
@@ -127,10 +133,35 @@ function renderDevice() {
   }
 }
 
+function renderDeviceManager() {
+  const wrap = $('devRows');
+  wrap.innerHTML = '';
+  for (const dev of state.devices) {
+    const enabled = dev.enabled !== false;
+    const row = document.createElement('label');
+    row.className = 'dev-row' + (enabled ? '' : ' off');
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.checked = enabled;
+    chk.addEventListener('change', () => {
+      window.gadget.setDeviceEnabled(dev.id, chk.checked).catch(() => {});
+    });
+    const name = document.createElement('span');
+    name.className = 'dev-name';
+    name.textContent = deviceLabel(dev);
+    const ip = document.createElement('span');
+    ip.className = 'dev-ip';
+    ip.textContent = dev.ip;
+    row.append(chk, name, ip);
+    wrap.appendChild(row);
+  }
+}
+
 function renderAll() {
   renderTabs();
   renderMiniSelect();
   renderDevice();
+  renderDeviceManager();
 }
 
 // --- Olaylar ---
@@ -211,6 +242,97 @@ $('pinBtn').addEventListener('click', () => window.gadget.setPin(!state.alwaysOn
 $('miniBtn').addEventListener('click', () => window.gadget.setMini(!state.mini));
 $('minBtn').addEventListener('click', () => window.gadget.minimize());
 $('closeBtn').addEventListener('click', () => window.gadget.hideWindow());
+
+// --- Debug popup ---
+
+let debugTimer = null;
+
+function fmtDuration(ms) {
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  return (h ? h + 'sa ' : '') + (m ? m + 'dk ' : '') + (s % 60) + 'sn';
+}
+
+function dbgRow(rows, key, value) {
+  rows.push({ key, value });
+}
+
+async function updateDebug() {
+  const dev = selectedDevice();
+  const wrap = $('dbgRows');
+  if (!dev) { wrap.textContent = t('noDevice'); return; }
+  let d;
+  try {
+    d = await window.gadget.getDebug(dev.id);
+  } catch (_) {
+    return; // cihaz listeden kalkmis olabilir; popup bir sonraki turda toparlar
+  }
+  const p = d.props || {};
+  const st = d.stats || {};
+  const rows = [];
+  dbgRow(rows, 'Model', (d.model || '—') + (d.fw ? ' (fw ' + d.fw + ')' : ''));
+  dbgRow(rows, 'IP', d.ip + ':' + d.port);
+  dbgRow(rows, 'ID', d.id);
+  dbgRow(rows, t('dbgStatus'), d.connected ? t('connected') : t('disconnected'));
+  if (d.connected && st.connectedAt) dbgRow(rows, t('dbgUptime'), fmtDuration(Date.now() - st.connectedAt));
+  dbgRow(rows, t('dbgLatency'), st.lastLatency != null ? st.lastLatency + ' ms' : '—');
+  dbgRow(rows, '§' + t('dbgTraffic'), '');
+  dbgRow(rows, '↑ / ↓', st.tx + ' / ' + st.rx);
+  dbgRow(rows, t('dbgNotifications'), String(st.notifications || 0));
+  dbgRow(rows, t('dbgReconnects'), String(st.reconnects || 0));
+  dbgRow(rows, '§' + t('dbgState'), '');
+  dbgRow(rows, t('turnOn') + '/' + t('turnOff'), p.power || '—');
+  if (p.bright != null) dbgRow(rows, t('brightness'), p.bright + '%');
+  if (p.ct) dbgRow(rows, t('colorTemp'), p.ct + ' K');
+  if (p.rgb != null && p.rgb !== '') dbgRow(rows, 'RGB', '#' + Number(p.rgb).toString(16).padStart(6, '0'));
+  if (p.color_mode != null) dbgRow(rows, 'color_mode', String(p.color_mode));
+  dbgRow(rows, '§' + t('dbgSupport') + ' (' + (d.support || []).length + ')', '');
+  dbgRow(rows, '', (d.support || []).join(' ') || '—');
+
+  wrap.innerHTML = '';
+  for (const r of rows) {
+    if (r.key.startsWith('§')) {
+      const sec = document.createElement('div');
+      sec.className = 'dbg-section';
+      sec.textContent = r.key.slice(1);
+      wrap.appendChild(sec);
+      continue;
+    }
+    const row = document.createElement('div');
+    row.className = 'dbg-row';
+    const k = document.createElement('span'); k.className = 'k'; k.textContent = r.key;
+    const v = document.createElement('span'); v.className = 'v'; v.textContent = r.value;
+    row.append(k, v);
+    wrap.appendChild(row);
+  }
+}
+
+function setDebugOpen(open) {
+  $('debugPopup').classList.toggle('hidden', !open);
+  $('debugBtn').classList.toggle('active', open);
+  clearInterval(debugTimer);
+  if (open) {
+    updateDebug();
+    debugTimer = setInterval(updateDebug, 2000);
+  }
+}
+
+$('debugBtn').addEventListener('click', () => setDebugOpen($('debugPopup').classList.contains('hidden')));
+$('debugCloseBtn').addEventListener('click', () => setDebugOpen(false));
+
+// --- Cihaz yonetimi popup'i ---
+
+$('devicesBtn').addEventListener('click', () => {
+  const pop = $('devicesPopup');
+  const show = pop.classList.contains('hidden');
+  pop.classList.toggle('hidden', !show);
+  $('devicesBtn').classList.toggle('active', show);
+  if (show) renderDeviceManager();
+});
+$('devicesCloseBtn').addEventListener('click', () => {
+  $('devicesPopup').classList.add('hidden');
+  $('devicesBtn').classList.remove('active');
+});
 
 $('miniDeviceSelect').addEventListener('change', (e) => {
   state.selectedId = e.target.value;

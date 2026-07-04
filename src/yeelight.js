@@ -31,6 +31,7 @@ function parseSsdpResponse(text) {
     ip: m[1],
     port: Number(m[2]),
     model: headers.model || 'unknown',
+    fw: headers.fw_ver || '',
     name: headers.name || '',
     support: (headers.support || '').split(/\s+/).filter(Boolean),
     power: headers.power || 'off',
@@ -102,14 +103,16 @@ async function queryOne(ip, timeoutMs = 1500) {
 // Tek bir lambaya kalici TCP baglantisi. Kopunca artan bekleme ile yeniden
 // baglanir, lambadan gelen "props" bildirimlerini event olarak yayar.
 class YeelightDevice extends EventEmitter {
-  constructor({ ip, port = 55443, id = null, name = '', model = '', support = [] }) {
+  constructor({ ip, port = 55443, id = null, name = '', model = '', fw = '', support = [] }) {
     super();
     this.ip = ip;
     this.port = port;
     this.id = id || ip;
     this.name = name;
     this.model = model;
+    this.fw = fw;
     this.support = support;
+    this.stats = { tx: 0, rx: 0, notifications: 0, reconnects: 0, lastLatency: null, connectedAt: null };
     this.connected = false;
     this.props = {};
     this._socket = null;
@@ -131,6 +134,7 @@ class YeelightDevice extends EventEmitter {
     sock.on('connect', () => {
       this.connected = true;
       this._retryDelay = 1000;
+      this.stats.connectedAt = Date.now();
       this.emit('connection', true);
       this.refresh().catch(() => {});
       // Telefon uygulamasi/bulut uzerinden yapilan degisiklikler icin LAN'a
@@ -161,6 +165,7 @@ class YeelightDevice extends EventEmitter {
 
   _scheduleReconnect() {
     if (this._closed) return;
+    this.stats.reconnects++;
     clearTimeout(this._reconnectTimer);
     this._reconnectTimer = setTimeout(() => this.connect(), this._retryDelay);
     this._retryDelay = Math.min(this._retryDelay * 2, 30000);
@@ -176,6 +181,7 @@ class YeelightDevice extends EventEmitter {
       let msg;
       try { msg = JSON.parse(line); } catch (_) { continue; }
       if (msg.method === 'props' && msg.params) {
+        this.stats.notifications++;
         Object.assign(this.props, msg.params);
         this.emit('props', msg.params);
       } else if (msg.id != null && this._pending.has(msg.id)) {
@@ -191,7 +197,16 @@ class YeelightDevice extends EventEmitter {
     return new Promise((resolve, reject) => {
       if (!this.connected || !this._socket) return reject(new Error('not connected'));
       const id = this._nextId++;
-      this._pending.set(id, { resolve, reject });
+      this.stats.tx++;
+      const t0 = Date.now();
+      this._pending.set(id, {
+        resolve: (result) => {
+          this.stats.rx++;
+          this.stats.lastLatency = Date.now() - t0;
+          resolve(result);
+        },
+        reject
+      });
       this._socket.write(JSON.stringify({ id, method, params }) + '\r\n');
       setTimeout(() => {
         if (this._pending.has(id)) {
@@ -264,9 +279,11 @@ class YeelightDevice extends EventEmitter {
       port: this.port,
       name: this.name,
       model: this.model,
+      fw: this.fw,
       support: this.support,
       connected: this.connected,
-      props: this.props
+      props: this.props,
+      stats: { ...this.stats }
     };
   }
 }

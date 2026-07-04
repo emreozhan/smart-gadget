@@ -87,8 +87,19 @@ function trayIcon(on) {
   );
 }
 
+function isDisabled(id) {
+  return (store.get('disabled') || []).includes(id);
+}
+
+function deviceJSON(d) {
+  return { ...d.toJSON(), enabled: !isDisabled(d.id) };
+}
+
 function selectedDevice() {
-  return devices.get(store.get('selectedId')) || devices.values().next().value || null;
+  const sel = devices.get(store.get('selectedId'));
+  if (sel && !isDisabled(sel.id)) return sel;
+  for (const d of devices.values()) if (!isDisabled(d.id)) return d;
+  return null;
 }
 
 function createTray() {
@@ -110,8 +121,8 @@ function updateTrayMenu() {
   const t = STRINGS[store.get('lang')] || STRINGS.tr;
   const dev = selectedDevice();
   tray.setImage(trayIcon(!!(dev && dev.props.power === 'on')));
-  // Her cihaz icin ayri ac/kapat anahtari.
-  const deviceItems = [...devices.values()].map((d) => ({
+  // Her (etkin) cihaz icin ayri ac/kapat anahtari.
+  const deviceItems = [...devices.values()].filter((d) => !isDisabled(d.id)).map((d) => ({
     label: deviceLabel(d),
     type: 'checkbox',
     checked: d.props.power === 'on',
@@ -137,26 +148,26 @@ function attachDevice(dev) {
   if (devices.has(dev.id)) return devices.get(dev.id);
   devices.set(dev.id, dev);
   dev.on('props', () => {
-    if (win) win.webContents.send('device:state', dev.toJSON());
+    if (win) win.webContents.send('device:state', deviceJSON(dev));
     updateTrayMenu();
   });
   dev.on('connection', (ok) => {
     console.log(`device ${dev.ip}: ${ok ? 'connected' : 'disconnected'}`);
-    if (win) win.webContents.send('device:state', dev.toJSON());
+    if (win) win.webContents.send('device:state', deviceJSON(dev));
     updateTrayMenu();
   });
-  dev.connect();
+  if (!isDisabled(dev.id)) dev.connect(); // devre disi cihaza baglanma
   return dev;
 }
 
 function persistDevices() {
   store.set('devices', [...devices.values()].map((d) => ({
-    id: d.id, ip: d.ip, port: d.port, name: d.name, model: d.model, support: d.support
+    id: d.id, ip: d.ip, port: d.port, name: d.name, model: d.model, fw: d.fw, support: d.support
   })));
 }
 
 function sendDeviceList() {
-  if (win) win.webContents.send('devices:list', [...devices.values()].map((d) => d.toJSON()));
+  if (win) win.webContents.send('devices:list', [...devices.values()].map(deviceJSON));
 }
 
 async function runDiscovery() {
@@ -172,6 +183,11 @@ async function runDiscovery() {
         existing.close();
         devices.delete(info.id);
         attachDevice(new YeelightDevice(info));
+      } else {
+        // Eski kayitlarda eksik olabilecek meta bilgileri tazele.
+        existing.model = info.model || existing.model;
+        existing.fw = info.fw || existing.fw;
+        if (info.support && info.support.length) existing.support = info.support;
       }
     } else {
       attachDevice(new YeelightDevice(info));
@@ -179,7 +195,7 @@ async function runDiscovery() {
   }
   persistDevices();
   sendDeviceList();
-  return [...devices.values()].map((d) => d.toJSON());
+  return [...devices.values()].map(deviceJSON);
 }
 
 function setMini(mini) {
@@ -223,8 +239,30 @@ ipcMain.handle('app:getInitial', () => ({
   alwaysOnTop: store.get('alwaysOnTop'),
   lang: store.get('lang'),
   selectedId: store.get('selectedId'),
-  devices: [...devices.values()].map((d) => d.toJSON())
+  devices: [...devices.values()].map(deviceJSON)
 }));
+
+// Cihazi devre disi birak / etkinlestir. Devre disi: baglanti kesilir,
+// sekmelerde/tepside gorunmez; kayit silinmez, tekrar etkinlestirilebilir.
+ipcMain.handle('devices:setEnabled', (_e, id, enabled) => {
+  const disabled = new Set(store.get('disabled') || []);
+  if (enabled) disabled.delete(id); else disabled.add(id);
+  store.set('disabled', [...disabled]);
+  const dev = devices.get(id);
+  if (dev) {
+    if (enabled) {
+      // close() kalici oldugundan cihazi ayni bilgilerle yeniden olustur.
+      const info = { id: dev.id, ip: dev.ip, port: dev.port, name: dev.name, model: dev.model, fw: dev.fw, support: dev.support };
+      dev.close();
+      devices.delete(id);
+      attachDevice(new YeelightDevice(info));
+    } else {
+      dev.close(); // haritada kalir ki listede gorunup tekrar acilabilsin
+    }
+  }
+  sendDeviceList();
+  updateTrayMenu();
+});
 
 ipcMain.handle('ui:selectDevice', (_e, id) => {
   store.set('selectedId', id);
@@ -240,7 +278,7 @@ ipcMain.handle('devices:addManual', async (_e, ip) => {
   const dev = attachDevice(new YeelightDevice(info));
   persistDevices();
   sendDeviceList();
-  return dev.toJSON();
+  return deviceJSON(dev);
 });
 
 ipcMain.handle('devices:remove', (_e, id) => {
@@ -260,6 +298,17 @@ ipcMain.handle('device:power', async (_e, id, on) => {
   // Yumusak gecis sirasinda lamba ara parlaklik degerleri bildirir ve son
   // deger kacabilir; gecis bittikten sonra gercek durumu tekrar oku.
   setTimeout(() => dev.refresh().catch(() => {}), 800);
+});
+
+// Debug popup'i icin anlik cihaz bilgisi: guncel gecikmeyi olcmek icin
+// hafif bir get_prop atar (popup 2 sn'de bir sordugu icin kota sorunu olmaz).
+ipcMain.handle('device:debug', async (_e, id) => {
+  const dev = devices.get(id);
+  if (!dev) throw new Error('device not found');
+  if (dev.connected) {
+    try { await dev.send('get_prop', ['power']); } catch (_) { /* gecikme stats'ta kalir */ }
+  }
+  return dev.toJSON();
 });
 
 ipcMain.on('device:bright', (_e, id, value) => {

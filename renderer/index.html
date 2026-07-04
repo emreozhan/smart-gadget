@@ -13,6 +13,8 @@
       <span data-i18n="appTitle">Smart Gadget</span>
     </div>
     <div id="topbarBtns" class="topbar-btns">
+      <button id="devicesBtn" class="icon-btn" data-i18n-title="devicesTitle">⚙</button>
+      <button id="debugBtn" class="icon-btn" data-i18n-title="debug">🐞</button>
       <button id="langBtn" class="icon-btn" title=""></button>
       <button id="pinBtn" class="icon-btn" data-i18n-title="pin">📌</button>
       <button id="miniBtn" class="icon-btn" data-i18n-title="mini">▣</button>
@@ -73,6 +75,25 @@
       <span id="miniCtrls" class="mini-only"></span>
     </section>
   </main>
+
+  <!-- Secili cihazin canli teknik bilgileri (debug) -->
+  <div id="debugPopup" class="hidden">
+    <div class="dbg-title">
+      <span data-i18n="debug">Cihaz bilgisi</span>
+      <button id="debugCloseBtn" class="icon-btn">✕</button>
+    </div>
+    <div id="dbgRows"></div>
+  </div>
+
+  <!-- Cihaz yonetimi: isareti kaldirilan cihaz yonetilmez -->
+  <div id="devicesPopup" class="hidden">
+    <div class="dbg-title">
+      <span data-i18n="devicesTitle">Cihazlar</span>
+      <button id="devicesCloseBtn" class="icon-btn">✕</button>
+    </div>
+    <div id="devRows"></div>
+    <p class="hint" data-i18n="devicesHint">İşareti kaldırılan cihaz yönetilmez.</p>
+  </div>
   <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
