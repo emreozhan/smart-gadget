@@ -1,6 +1,7 @@
 {
   "name": "smart-gadget",
   "version": "1.0.0",
+  "license": "MIT",
   "description": "Yeelight akilli lamba kontrolcusu - tepsi ikonu, mini mod, her zaman ustte",
   "main": "main.js",
   "private": true,

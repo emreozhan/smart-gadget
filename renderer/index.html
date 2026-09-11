@@ -92,6 +92,15 @@
       <button id="devicesCloseBtn" class="icon-btn">✕</button>
     </div>
     <div id="devRows"></div>
+    <form id="renameForm" class="hidden">
+      <label for="deviceNameInput" data-i18n="deviceNameLabel">Cihaz adı</label>
+      <input id="deviceNameInput" type="text" maxlength="64" required autocomplete="off">
+      <p id="renameStatus" class="hint" role="status"></p>
+      <div class="rename-actions">
+        <button id="renameSaveBtn" type="submit" data-i18n="save">Kaydet</button>
+        <button id="renameCancelBtn" type="button" data-i18n="cancel">Vazgeç</button>
+      </div>
+    </form>
     <p class="hint" data-i18n="devicesHint">İşareti kaldırılan cihaz yönetilmez.</p>
   </div>
   <script src="i18n.js"></script>

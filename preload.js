@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('gadget', {
   selectDevice: (id) => ipcRenderer.invoke('ui:selectDevice', id),
   getDebug: (id) => ipcRenderer.invoke('device:debug', id),
   setDeviceEnabled: (id, enabled) => ipcRenderer.invoke('devices:setEnabled', id, enabled),
+  renameDevice: (id, name) => ipcRenderer.invoke('devices:rename', id, name),
   setPower: (id, on) => ipcRenderer.invoke('device:power', id, on),
   setBright: (id, value) => ipcRenderer.send('device:bright', id, value),
   setRgb: (id, rgb) => ipcRenderer.send('device:rgb', id, rgb),
