@@ -24,7 +24,7 @@
   </header>
 
   <main id="content">
-    <!-- Cihaz yokken -->
+    <!-- Empty device state -->
     <section id="emptyState" class="empty hidden">
       <p data-i18n="noDevice">Ağda lamba bulunamadı.</p>
       <p class="hint" data-i18n="lanHint">Yeelight uygulamasından "LAN Kontrolü"nün açık olduğundan emin olun.</p>
@@ -36,7 +36,7 @@
       <p id="scanStatus" class="hint"></p>
     </section>
 
-    <!-- Cihaz karti -->
+    <!-- Device card -->
     <section id="deviceView" class="hidden">
       <select id="miniDeviceSelect" class="mini-only" title=""></select>
       <div id="deviceTabs" class="device-tabs mini-hide"></div>
@@ -76,7 +76,7 @@
     </section>
   </main>
 
-  <!-- Secili cihazin canli teknik bilgileri (debug) -->
+  <!-- Live technical information for the selected device (debug) -->
   <div id="debugPopup" class="hidden">
     <div class="dbg-title">
       <span data-i18n="debug">Cihaz bilgisi</span>
@@ -85,7 +85,7 @@
     <div id="dbgRows"></div>
   </div>
 
-  <!-- Cihaz yonetimi: isareti kaldirilan cihaz yonetilmez -->
+  <!-- Device management: unchecked devices are not managed -->
   <div id="devicesPopup" class="hidden">
     <div class="dbg-title">
       <span data-i18n="devicesTitle">Cihazlar</span>

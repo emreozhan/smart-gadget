@@ -27,7 +27,7 @@ body {
 
 .hidden { display: none !important; }
 
-/* --- Ust bar --- */
+/* --- Top bar --- */
 .topbar {
   display: flex;
   align-items: center;
@@ -35,11 +35,11 @@ body {
   padding: 10px 12px;
   background: var(--panel);
   flex: 0 0 auto;
-  -webkit-app-region: drag; /* cercevesiz pencerenin basligi */
+  -webkit-app-region: drag; /* Title bar of the frameless window */
 }
 .topbar button { -webkit-app-region: no-drag; }
 
-/* Mini modda baslik yok; govde bosluklarindan suruklenir. */
+/* Mini mode has no title bar; drag the window using empty areas of the body. */
 body.mini #content { -webkit-app-region: drag; }
 body.mini button, body.mini input, body.mini select { -webkit-app-region: no-drag; }
 .title { font-weight: 600; display: flex; align-items: center; gap: 8px; }
@@ -57,7 +57,7 @@ body.mini button, body.mini input, body.mini select { -webkit-app-region: no-dra
 .icon-btn:hover { background: var(--panel2); color: var(--text); }
 .icon-btn.active { color: var(--accent); background: var(--panel2); }
 
-/* --- Icerik --- */
+/* --- Content --- */
 #content { flex: 1; overflow-y: auto; padding: 14px; }
 
 .empty { text-align: center; padding-top: 30px; display: flex; flex-direction: column; gap: 14px; align-items: center; }
@@ -93,7 +93,7 @@ button.primary:hover { filter: brightness(1.1); }
   cursor: pointer;
 }
 
-/* --- Cihaz sekmeleri --- */
+/* --- Device tabs --- */
 .device-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 .tab {
   display: flex;
@@ -115,7 +115,7 @@ button.primary:hover { filter: brightness(1.1); }
 .icon-btn.spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* --- Cihaz karti --- */
+/* --- Device card --- */
 .device-header {
   display: flex;
   align-items: center;
@@ -201,7 +201,7 @@ input[type="color"] {
 }
 .swatch:hover { border-color: var(--text); }
 
-/* --- Yari saydam popuplar (debug + cihaz yonetimi) --- */
+/* --- Translucent popups (debug and device management) --- */
 #debugPopup, #devicesPopup {
   position: fixed;
   top: 48px;
@@ -209,7 +209,7 @@ input[type="color"] {
   width: 300px;
   max-height: calc(100vh - 60px);
   overflow-y: auto;
-  background: rgba(20, 22, 28, 0.72); /* yari saydam */
+  background: rgba(20, 22, 28, 0.72); /* Translucent */
   backdrop-filter: blur(8px);
   border: 1px solid var(--panel2);
   border-radius: 12px;
@@ -270,11 +270,11 @@ input[type="color"] {
 }
 .rename-actions button:disabled { opacity: .5; cursor: wait; }
 
-/* --- Mini mod: tek kompakt satir (secici + guc + parlaklik + renk) --- */
+/* --- Mini mode: a single compact row (selector, power, brightness, and color) --- */
 .mini-only { display: none; }
 body.mini .mini-only { display: flex; }
 
-body.mini .topbar { display: none; } /* baslik/dil mini modda islevsiz */
+body.mini .topbar { display: none; } /* Title and language controls are unavailable in mini mode. */
 body.mini #content { padding: 10px 12px; overflow: hidden; }
 body.mini .mini-hide { display: none !important; }
 body.mini .device-header { display: none; }

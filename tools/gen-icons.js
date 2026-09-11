@@ -1,15 +1,15 @@
 'use strict';
 
-// Uygulama ve tepsi ikonlarini bagimliliksiz uretir:
-//   assets/icon.ico  (256px, PNG gomulu ICO)
+// Generate app and tray icons without external dependencies:
+//   assets/icon.ico  (256px, ICO with embedded PNG)
 //   assets/tray.png / tray-off.png (32px)
-// Calistirma: npm run icons
+// Run: npm run icons
 
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 
-// --- Minimal PNG kodlayici ---
+// --- Minimal PNG encoder ---
 
 const CRC_TABLE = (() => {
   const t = new Int32Array(256);
@@ -40,12 +40,12 @@ function encodePng(size, rgba) {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(size, 0);
   ihdr.writeUInt32BE(size, 4);
-  ihdr[8] = 8;  // bit derinligi
-  ihdr[9] = 6;  // renk tipi: RGBA
+  ihdr[8] = 8;  // Bit depth
+  ihdr[9] = 6;  // Color type: RGBA
   const stride = size * 4;
   const raw = Buffer.alloc((stride + 1) * size);
   for (let y = 0; y < size; y++) {
-    raw[y * (stride + 1)] = 0; // filtre: yok
+    raw[y * (stride + 1)] = 0; // Filter: none
     rgba.copy(raw, y * (stride + 1) + 1, y * stride, (y + 1) * stride);
   }
   return Buffer.concat([
@@ -58,18 +58,18 @@ function encodePng(size, rgba) {
 
 function wrapIco(png, size) {
   const header = Buffer.alloc(22);
-  header.writeUInt16LE(1, 2);                    // tip: icon
-  header.writeUInt16LE(1, 4);                    // 1 goruntu
-  header[6] = size >= 256 ? 0 : size;            // genislik (0 = 256)
+  header.writeUInt16LE(1, 2);                    // Type: icon
+  header.writeUInt16LE(1, 4);                    // One image
+  header[6] = size >= 256 ? 0 : size;            // Width (0 = 256)
   header[7] = size >= 256 ? 0 : size;
-  header.writeUInt16LE(1, 10);                   // duzlemler
+  header.writeUInt16LE(1, 10);                   // Planes
   header.writeUInt16LE(32, 12);                  // bpp
   header.writeUInt32LE(png.length, 14);
-  header.writeUInt32LE(22, 18);                  // veri ofseti
+  header.writeUInt32LE(22, 18);                  // Data offset
   return Buffer.concat([header, png]);
 }
 
-// --- Cizim: yumusak kenarli ampul + govde ---
+// --- Drawing: soft-edged light bulb and base ---
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 

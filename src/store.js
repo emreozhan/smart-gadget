@@ -1,16 +1,16 @@
 'use strict';
 
-// Basit JSON ayar deposu (userData/settings.json). Yazmalar debounce'lu.
+// Simple JSON settings store (userData/settings.json) with debounced writes.
 
 const fs = require('fs');
 const path = require('path');
 
 const DEFAULTS = {
   devices: [],            // { id, ip, port, name, model, fw, support }
-  selectedId: null,       // arayuzde ve tepside secili cihaz
-  disabled: [],           // yonetilmeyecek (devre disi) cihaz id'leri
-  windowBounds: null,     // { x, y, width, height } — normal mod
-  miniBounds: null,       // { x, y } — mini mod konumu
+  selectedId: null,       // Selected device in the UI and system tray
+  disabled: [],           // IDs of unmanaged (disabled) devices
+  windowBounds: null,     // { x, y, width, height } — Normal mode
+  miniBounds: null,       // { x, y } — Mini mode position
   mini: false,
   alwaysOnTop: false,
   lang: 'tr'
@@ -23,7 +23,7 @@ class Store {
     this._saveTimer = null;
     try {
       Object.assign(this.data, JSON.parse(fs.readFileSync(this.file, 'utf8')));
-    } catch (_) { /* ilk calistirma */ }
+    } catch (_) { /* First run */ }
   }
 
   get(key) { return this.data[key]; }

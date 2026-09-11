@@ -37,7 +37,7 @@ function init() {
     createWindow();
     createTray();
     for (const saved of store.get('devices')) attachDevice(new LightDevice(saved));
-    // Acilista arka planda tarama: yeni lamba varsa listeye eklenir.
+    // Discover devices in the background at startup and add any new lamps.
     runDiscovery().catch(() => {});
 }
 
@@ -54,7 +54,7 @@ function createWindow() {
         minHeight: MINI_SIZE.height,
         resizable: !mini,
         maximizable: false,
-        frame: false, // basligi uygulama ciziyor; mini modda hic baslik yok
+        frame: false, // The app draws its own title bar; mini mode has none.
         alwaysOnTop: store.get('alwaysOnTop'),
         icon: path.join(__dirname, 'assets', 'icon.ico'),
         webPreferences: {
@@ -69,7 +69,7 @@ function createWindow() {
     win.setMenuBarVisibility(false);
     win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
-    // Kapatma tusu uygulamayi tepsiye gizler; gercek cikis tepsi menusunden.
+    // The close button hides the app to the tray; use the tray menu to quit.
     win.on('close', (e) => {
         if (!quitting) {
             e.preventDefault();
@@ -128,7 +128,7 @@ function updateTrayMenu() {
     const t = STRINGS[store.get('lang')] || STRINGS.tr;
     const dev = selectedDevice();
     tray.setImage(trayIcon(!!(dev && dev.props.power === 'on')));
-    // Her (etkin) cihaz icin ayri ac/kapat anahtari.
+    // Provide a separate power toggle for each enabled device.
     const deviceItems = [...devices.values()]
         .filter((d) => !isDisabled(d.id))
         .map((d) => ({
@@ -179,7 +179,7 @@ function attachDevice(dev) {
         if (win) win.webContents.send('device:state', deviceJSON(dev));
         updateTrayMenu();
     });
-    if (!isDisabled(dev.id)) dev.connect(); // devre disi cihaza baglanma
+    if (!isDisabled(dev.id)) dev.connect(); // Do not connect to disabled devices.
     return dev;
 }
 
@@ -204,19 +204,19 @@ function sendDeviceList() {
 
 async function runDiscovery() {
     let found = await discover(3000);
-    // Multicast engellenmis olabilir (istemci izolasyonu vb.) — port taramasiyla dene.
+    // Multicast may be blocked by client isolation; try unicast discovery.
     if (!found.length) found = await sweepDiscover();
     console.log(`discovery: ${found.length} device(s)`, found.map((d) => `${d.ip} (${d.model || 'model?'})`).join(', '));
     for (const info of found) {
         const existing = devices.get(info.id);
         if (existing) {
-            // IP degismis olabilir (DHCP); yeniden baglan.
+            // The IP address may have changed through DHCP; reconnect.
             if (existing.ip !== info.ip) {
                 existing.close();
                 devices.delete(info.id);
                 attachDevice(new LightDevice({ ...info, name: existing.name || info.name }));
             } else {
-                // Eski kayitlarda eksik olabilecek meta bilgileri tazele.
+                // Refresh metadata that may be missing from older saved devices.
                 existing.model = info.model || existing.model;
                 existing.fw = info.fw || existing.fw;
                 if (info.support && info.support.length) existing.support = info.support;
@@ -274,8 +274,8 @@ ipcMain.handle('app:getInitial', () => ({
     devices: [...devices.values()].map(deviceJSON)
 }));
 
-// Cihazi devre disi birak / etkinlestir. Devre disi: baglanti kesilir,
-// sekmelerde/tepside gorunmez; kayit silinmez, tekrar etkinlestirilebilir.
+// Enable or disable a device. Disabled devices are disconnected and hidden
+// from tabs and the tray; their saved records remain so they can be enabled again.
 ipcMain.handle('devices:setEnabled', (_e, id, enabled) => {
     const disabled = new Set(store.get('disabled') || []);
     if (enabled) disabled.delete(id);
@@ -284,13 +284,13 @@ ipcMain.handle('devices:setEnabled', (_e, id, enabled) => {
     const dev = devices.get(id);
     if (dev) {
         if (enabled) {
-            // close() kalici oldugundan cihazi ayni bilgilerle yeniden olustur.
+            // Since close() is permanent, recreate the device with the same metadata.
             const info = { id: dev.id, ip: dev.ip, port: dev.port, name: dev.name, model: dev.model, fw: dev.fw, support: dev.support };
             dev.close();
             devices.delete(id);
             attachDevice(new LightDevice(info));
         } else {
-            dev.close(); // haritada kalir ki listede gorunup tekrar acilabilsin
+            dev.close(); // Keep it in the map so it remains listed and can be enabled again.
         }
     }
     sendDeviceList();
@@ -322,7 +322,7 @@ ipcMain.handle('devices:discover', () => runDiscovery());
 
 ipcMain.handle('devices:addManual', async (_e, ip) => {
     if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) throw new Error('invalid ip');
-    // Model/yetenek bilgisi icin once SSDP ile sorgula; yanit yoksa duz IP ekle.
+    // Query SSDP for model and capabilities first; fall back to the IP address alone.
     const info = (await queryOne(ip)) || { ip };
     const dev = attachDevice(new LightDevice(info));
     persistDevices();
@@ -344,16 +344,16 @@ ipcMain.handle('device:power', async (_e, id, on) => {
     const dev = devices.get(id);
     if (!dev) throw new Error('device not found');
     await dev.setPower(on);
-    dev.props.power = on ? 'on' : 'off'; // props bildirimi gecikebilir; UI'yi hemen guncelle
+    dev.props.power = on ? 'on' : 'off'; // Property notifications may be delayed; update the UI immediately.
     win.webContents.send('device:state', dev.toJSON());
     updateTrayMenu();
-    // Yumusak gecis sirasinda lamba ara parlaklik degerleri bildirir ve son
-    // deger kacabilir; gecis bittikten sonra gercek durumu tekrar oku.
+    // During smooth transitions, the lamp reports intermediate brightness values
+    // and may omit the final value; refresh the actual state after the transition.
     setTimeout(() => dev.refresh().catch(() => {}), 800);
 });
 
-// Debug popup'i icin anlik cihaz bilgisi: guncel gecikmeyi olcmek icin
-// hafif bir get_prop atar (popup 2 sn'de bir sordugu icin kota sorunu olmaz).
+// Fetch live device information for the debug popup. Use a lightweight
+// get_prop request to measure latency; polling every two seconds stays within the quota.
 ipcMain.handle('device:debug', async (_e, id) => {
     const dev = devices.get(id);
     if (!dev) throw new Error('device not found');
@@ -361,7 +361,7 @@ ipcMain.handle('device:debug', async (_e, id) => {
         try {
             await dev.send('get_prop', ['power']);
         } catch (_) {
-            /* gecikme stats'ta kalir */
+            /* Keep the previous latency in the stats. */
         }
     }
     return dev.toJSON();
@@ -389,7 +389,7 @@ ipcMain.on('ui:hideWindow', () => {
 });
 
 ipcMain.handle('ui:setMini', (_e, mini) => setMini(mini));
-// Mini mod yari saydam; imlec penceredeyken gecici olarak netlesir.
+// Mini mode is translucent; make it opaque while the pointer is inside the window.
 ipcMain.on('ui:hover', (_e, hover) => {
     if (store.get('mini')) win.setOpacity(hover ? 1 : MINI_OPACITY);
 });
@@ -406,5 +406,5 @@ app.on('before-quit', () => {
 });
 
 app.on('window-all-closed', () => {
-    /* tepside yasamaya devam */
+    /* Keep running in the system tray. */
 });

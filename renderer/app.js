@@ -6,7 +6,7 @@ const state = {
     lang: 'en',
     mini: false,
     alwaysOnTop: false,
-    devices: [], // ana surecten gelen cihaz JSON'lari
+    devices: [], // Device JSON objects received from the main process
     selectedId: null
 };
 
@@ -43,8 +43,8 @@ function applyUi() {
     document.body.classList.toggle('mini', state.mini);
     $('pinBtn').classList.toggle('active', state.alwaysOnTop);
     $('miniBtn').classList.toggle('active', state.mini);
-    // Mini modda ust bar gizlendigi icin islevsel butonlar (pin, mini, gizle)
-    // kompakt satirin sonuna tasinir; normal modda ust bara geri doner.
+    // The top bar is hidden in mini mode, so move the pin, mini, and hide buttons
+    // to the end of the compact row; move them back to the top bar in normal mode.
     if (state.mini) {
         $('miniCtrls').append($('pinBtn'), $('miniBtn'), $('closeBtn'));
     } else {
@@ -52,7 +52,7 @@ function applyUi() {
     }
 }
 
-// --- Cihaz sekmeleri ---
+// --- Device tabs ---
 
 function deviceLabel(dev) {
     return dev.name || (dev.props && dev.props.name) || dev.model || dev.ip;
@@ -75,7 +75,7 @@ function renderTabs() {
     const wrap = $('deviceTabs');
     wrap.innerHTML = '';
     const list = enabledDevices();
-    // Tek cihaz varken sekme cubugu gereksiz.
+    // The tab bar is unnecessary when there is only one device.
     wrap.classList.toggle('hidden', list.length < 2);
     const sel = selectedDevice();
     for (const dev of list) {
@@ -95,7 +95,7 @@ function renderTabs() {
     }
 }
 
-// --- Cihaz gorunumu ---
+// --- Device view ---
 
 function rgbToHex(rgb) {
     return (
@@ -114,9 +114,9 @@ function renderDevice() {
 
     const p = dev.props || {};
     const isOn = p.power === 'on';
-    // Yetenekler: SSDP "support" listesi varsa tek gecerli kaynak odur (ornegin
-    // "monoa" gibi sabit beyaz lambalar ct=2700 bildirir ama set_ct_abx
-    // desteklemez). Liste yoksa lambanin bildirdigi prop'lara bakilir.
+    // Capabilities: use the SSDP "support" list as the source of truth when available.
+    // For example, fixed-white lamps such as "monoa" report ct=2700 but do not support
+    // set_ct_abx. Without a support list, fall back to the reported properties.
     const support = dev.support || [];
     const hasColor = support.length ? support.includes('set_rgb') : p.rgb != null && p.rgb !== '';
     const hasCt = support.length ? support.includes('set_ct_abx') : p.ct != null && p.ct !== '';
@@ -139,7 +139,7 @@ function renderDevice() {
     $('powerBtn').classList.toggle('on', isOn);
     $('powerLabel').textContent = isOn ? t('turnOff') : t('turnOn');
 
-    // Kullanici surukleme ortasindayken slider'i geri cekme.
+    // Do not reset the slider while the user is dragging it.
     if (document.activeElement !== $('brightSlider') && p.bright != null) {
         $('brightSlider').value = Number(p.bright);
         $('brightVal').textContent = Math.round(Number(p.bright)) + '%';
@@ -198,7 +198,7 @@ function renderAll() {
     renderDeviceManager();
 }
 
-// --- Olaylar ---
+// --- Events ---
 
 $('powerBtn').addEventListener('click', () => {
     const dev = selectedDevice();
@@ -312,7 +312,7 @@ async function updateDebug() {
     try {
         d = await window.gadget.getDebug(dev.id);
     } catch (_) {
-        return; // cihaz listeden kalkmis olabilir; popup bir sonraki turda toparlar
+        return; // The device may have been removed; the popup will recover on the next refresh.
     }
     const p = d.props || {};
     const st = d.stats || {};
@@ -371,7 +371,7 @@ function setDebugOpen(open) {
 $('debugBtn').addEventListener('click', () => setDebugOpen($('debugPopup').classList.contains('hidden')));
 $('debugCloseBtn').addEventListener('click', () => setDebugOpen(false));
 
-// --- Cihaz yonetimi popup'i ---
+// --- Device management popup ---
 
 $('renameCancelBtn').addEventListener('click', () => {
     renameDeviceId = null;
@@ -424,11 +424,11 @@ $('miniDeviceSelect').addEventListener('change', (e) => {
     renderAll();
 });
 
-// Mini mod yari saydam; imlec uzerindeyken netlessin.
+// Mini mode is translucent; make it opaque while hovered.
 document.addEventListener('mouseenter', () => window.gadget.setHover(true));
 document.addEventListener('mouseleave', () => window.gadget.setHover(false));
 
-// --- Ana surecten gelen guncellemeler ---
+// --- Updates from the main process ---
 
 window.gadget.onDeviceState((dev) => {
     const i = state.devices.findIndex((d) => d.id === dev.id);
@@ -449,7 +449,7 @@ window.gadget.onUiState((ui) => {
     applyUi();
 });
 
-// --- Baslangic ---
+// --- Initialization ---
 
 (async () => {
     buildSwatches();

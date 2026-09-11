@@ -1,6 +1,6 @@
 'use strict';
 
-// TR/EN metinleri — Shortcut Deck'teki desenle ayni: data-i18n / data-i18n-title.
+// TR/EN strings using the same data-i18n / data-i18n-title pattern as Shortcut Deck.
 const I18N = {
     tr: {
         appTitle: 'Smart Gadget',

@@ -1,7 +1,7 @@
 'use strict';
 
-// Yeelight LAN protokolu: kesif (SSDP benzeri UDP multicast) + kontrol
-// (TCP 55443 uzerinden satir sonlu JSON). Harici bagimlilik yok.
+// Yeelight LAN protocol: discovery (SSDP-like UDP multicast) and control
+// (newline-delimited JSON over TCP port 55443). No external dependencies.
 
 const dgram = require('dgram');
 const net = require('net');
@@ -39,10 +39,10 @@ function parseSsdpResponse(text) {
     };
 }
 
-// M-SEARCH paketini verilen hedeflere (multicast adresi veya tek tek IP'ler)
-// gonderir, gelen yanitlari toplar. Yeelight, UDP 1982'ye unicast gelen
-// M-SEARCH'e de yanit verir — bu, multicast'in engellendigi aglarda ve
-// lambanin TCP baglanti kotasina takilmadan kesif yapmayi saglar.
+// Send M-SEARCH packets to the given targets (multicast or individual IP addresses)
+// and collect responses. Yeelight also responds to unicast M-SEARCH on UDP port 1982,
+// allowing discovery on networks where multicast is blocked without
+// using up the lamp's TCP connection quota.
 function ssdpSearch(targets, timeoutMs) {
     return new Promise((resolve) => {
         const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
@@ -66,7 +66,7 @@ function ssdpSearch(targets, timeoutMs) {
                 for (const ip of targets) socket.send(SEARCH_MSG, SSDP_PORT, ip);
             };
             sendAll();
-            // UDP kayipli olabilir; sure dolmadan bir kez daha dene.
+            // UDP packets may be lost; retry once before the timeout.
             setTimeout(
                 () => {
                     if (!done) sendAll();
@@ -78,14 +78,14 @@ function ssdpSearch(targets, timeoutMs) {
     });
 }
 
-// Agdaki Yeelight cihazlarini multicast ile bulur.
+// Discover Yeelight devices on the network using multicast.
 function discover(timeoutMs = 3000) {
     return ssdpSearch([SSDP_ADDR], timeoutMs);
 }
 
-// Multicast kesif sonuc vermezse: yerel /24 subnet'lerdeki her adrese
-// unicast M-SEARCH gonderir. (Bazi modemler Wi-Fi istemcileri arasinda
-// multicast'i engelliyor.)
+// If multicast discovery finds nothing, send unicast M-SEARCH to every address
+// in the local /24 subnets. Some routers block multicast between
+// Wi-Fi clients.
 function sweepDiscover(timeoutMs = 3000) {
     const targets = [];
     for (const addrs of Object.values(os.networkInterfaces())) {
@@ -98,14 +98,14 @@ function sweepDiscover(timeoutMs = 3000) {
     return ssdpSearch(targets, timeoutMs);
 }
 
-// Tek bir IP'yi sorgular (elle IP eklerken model/yetenek bilgisi almak icin).
+// Query a single IP address for model and capability information when adding it manually.
 async function queryOne(ip, timeoutMs = 1500) {
     const found = await ssdpSearch([ip], timeoutMs);
     return found.find((d) => d.ip === ip) || null;
 }
 
-// Tek bir lambaya kalici TCP baglantisi. Kopunca artan bekleme ile yeniden
-// baglanir, lambadan gelen "props" bildirimlerini event olarak yayar.
+// Maintain a persistent TCP connection to a lamp. Reconnect with increasing delays
+// after disconnection and emit events for incoming "props" notifications.
 class LightDevice extends EventEmitter {
     constructor({ ip, port = 55443, id = null, name = '', model = '', fw = '', support = [] }) {
         super();
@@ -141,8 +141,8 @@ class LightDevice extends EventEmitter {
             this.stats.connectedAt = Date.now();
             this.emit('connection', true);
             this.refresh().catch(() => {});
-            // Telefon uygulamasi/bulut uzerinden yapilan degisiklikler icin LAN'a
-            // props bildirimi her zaman gelmiyor; periyodik yoklama guvenlik agi.
+            // Changes made through the phone app or cloud do not always trigger
+            // LAN property notifications; periodic polling provides a fallback.
             this._pollTimer = setInterval(() => this.refresh().catch(() => {}), 30000);
         });
         sock.on('data', (data) => this._onData(data));
@@ -225,9 +225,9 @@ class LightDevice extends EventEmitter {
         });
     }
 
-    // Slider surukleme gibi hizli tekrarlanan komutlar icin: ayni anahtarla
-    // en fazla intervalMs'de bir gonderir, son deger her zaman iletilir.
-    // (Lambalar dakikada ~60 komutla sinirli.)
+    // For rapidly repeated commands, such as slider input, send at most once
+    // per intervalMs for each key; always send the latest value.
+    // (Lamps are limited to approximately 60 commands per minute.)
     sendThrottled(key, method, params, intervalMs = 300) {
         const now = Date.now();
         const t = this._throttles.get(key) || { last: 0, timer: null, next: null };
