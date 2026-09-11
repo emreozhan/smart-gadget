@@ -11,6 +11,7 @@ const state = {
 };
 
 const SWATCH_COLORS = ['#ffcc4d', '#ff8a5c', '#ff5c7a', '#b06cff', '#5c8aff', '#4dd0e1', '#6adf8f', '#ffffff'];
+let ctEditingId = null;
 
 function t(key) {
   const entry = (I18N[state.lang] || I18N.tr)[key];
@@ -109,8 +110,16 @@ function renderDevice() {
   const support = dev.support || [];
   const hasColor = support.length ? support.includes('set_rgb') : (p.rgb != null && p.rgb !== '');
   const hasCt = support.length ? support.includes('set_ct_abx') : (p.ct != null && p.ct !== '');
+  const kelvin = Number(p.ct);
+  const validCt = Number.isFinite(kelvin) && kelvin > 0;
+  const colorMode = hasColor && [1, 3].includes(Number(p.color_mode));
   $('colorRow').classList.toggle('hidden', !hasColor);
-  $('ctRow').classList.toggle('hidden', !hasCt);
+  $('ctRow').classList.toggle('hidden', !hasCt && !validCt);
+  $('ctSlider').classList.toggle('hidden', !hasCt);
+  $('ctSlider').disabled = !hasCt;
+  if (ctEditingId !== dev.id) {
+    $('ctVal').textContent = colorMode ? t('colorMode') : (validCt ? Math.round(kelvin) + ' K' : '—');
+  }
   $('deviceView').classList.toggle('no-color', !hasColor);
 
   $('deviceName').textContent = deviceLabel(dev);
@@ -125,8 +134,8 @@ function renderDevice() {
     $('brightSlider').value = Number(p.bright);
     $('brightVal').textContent = Math.round(Number(p.bright)) + '%';
   }
-  if (document.activeElement !== $('ctSlider') && p.ct) {
-    $('ctSlider').value = Number(p.ct);
+  if (ctEditingId !== dev.id) {
+    $('ctSlider').value = validCt ? kelvin : 4000;
   }
   if (p.rgb && Number(p.color_mode) === 1) {
     $('colorPicker').value = rgbToHex(p.rgb);
@@ -181,8 +190,15 @@ $('brightSlider').addEventListener('input', (e) => {
 
 $('ctSlider').addEventListener('input', (e) => {
   const dev = selectedDevice();
-  if (dev) window.gadget.setCt(dev.id, Number(e.target.value));
+  if (!dev) return;
+  ctEditingId = dev.id;
+  $('ctVal').textContent = e.target.value + ' K';
+  window.gadget.setCt(dev.id, Number(e.target.value));
 });
+
+for (const event of ['change', 'blur']) {
+  $('ctSlider').addEventListener(event, () => { ctEditingId = null; });
+}
 
 $('colorPicker').addEventListener('input', (e) => {
   const dev = selectedDevice();

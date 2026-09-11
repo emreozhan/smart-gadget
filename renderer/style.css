@@ -153,6 +153,7 @@ button.primary:hover { filter: brightness(1.1); }
 .power-btn:hover { background: var(--panel2); }
 
 .control { margin-bottom: 16px; }
+#ctVal { color: var(--text); font-variant-numeric: tabular-nums; }
 .control label {
   display: flex;
   justify-content: space-between;
