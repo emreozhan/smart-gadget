@@ -6,6 +6,15 @@ A small Windows desktop app to control Xiaomi/Yeelight smart lamps over your
 local network: on/off, brightness, white tone, and color. Lives in the system
 tray, has a compact **mini mode**, and can be pinned **always on top**.
 
+## See it in action
+
+[![Watch the 10-second English Smart Gadget promo](ads/preview-en-controls.png)](ads/smart-gadget-10s-en.webm)
+
+**[Watch / download the English video](ads/smart-gadget-10s-en.webm)** ·
+[Türkçe video](ads/smart-gadget-10s.webm)
+
+10 seconds · 1080p · Silent. Animated entirely with SVG, without additional libraries.
+
 ## Screenshots
 
 Captured from the running Windows app. Only the app window is shown;

@@ -7,6 +7,15 @@ Windows masaüstü uygulaması: açma/kapama, parlaklık, beyaz tonu ve renk.
 Sistem tepsisinde yaşar, kompakt bir **mini modu** vardır ve **her zaman
 üstte** sabitlenebilir.
 
+## Tanıtım videosu
+
+[![Smart Gadget 10 saniyelik tanıtım videosunu izle](ads/preview-controls.png)](ads/smart-gadget-10s.webm)
+
+**[Türkçe videoyu izle / indir](ads/smart-gadget-10s.webm)** ·
+[İngilizce video](ads/smart-gadget-10s-en.webm)
+
+10 saniye · 1080p · Sessiz. Ek kütüphane kullanılmadan tamamen SVG ile hazırlanmıştır.
+
 ## Ekran görüntüleri
 
 Görseller çalışan Windows uygulamasından alınmıştır; yalnızca uygulama penceresi
